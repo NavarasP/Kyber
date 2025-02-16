@@ -1,109 +1,95 @@
 from kyber import Kyber512
+# from PUFKey import get_puf_key
 import paho.mqtt.client as mqtt
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 import json
-import os
-import base64
 import time
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
 
 # MQTT Broker & Topics
-MQTT_BROKER = "localhost"
+MQTT_BROKER = "192.168.30.105"
 MQTT_TOPIC_CHALLENGE_REQUEST = "challenge/request"
-MQTT_TOPIC_CHALLENGE_RESPONSE = "challenge/response"
-MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY = "diffie_hellman/sender_key"
-MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY = "diffie_hellman/receiver_key"
-MQTT_TOPIC_KYBER_SENDER_SECRET_KEY = "kyber/sender_secret_key"
-MQTT_TOPIC_KYBER_RECEIVER_SECRET_KEY = "kyber/receiver_secret_key"
+MQTT_TOPIC_CHALLENGE_CHALLENGE = "challenge/challenge"
+MQTT_TOPIC_CHALLENGE_RESPONCE = "challenge/responce"
+MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY = "deffie_hellman/senderkey"
+MQTT_TOPIC_DIFFIE_HELLMAN_RECIVER_KEY = "deffie_hellman/reciverkey"
+MQTT_TOPIC_KYBER_SENDER_SECRET_KEY = "sender/secretkey"
+MQTT_TOPIC_KYBER_RECIVER_SECRET_KEY = "sender/secretkey"
 MQTT_TOPIC_DATA_SEND = "data/send"
 
 # Global Variables
 Connected = False
 Verified = False
+sender_skey = None
 Diffie_Hellman = None
 private_key_receiver = 15
 prime = 23
 generator = 5
+A = None
 
-# Compute receiver's public key (B)
-B = pow(generator, private_key_receiver, prime)
-
+def on_connect(client, userdata, flags, rc, properties):
+    global Connected
+    if rc == 0:
+        print("Connected to MQTT Broker")
+        Connected = True
+        client.subscribe(MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY)
+        client.subscribe(MQTT_TOPIC_KYBER_SENDER_SECRET_KEY)
+        client.subscribe(MQTT_TOPIC_CHALLENGE_CHALLENGE)
+        client.subscribe(MQTT_TOPIC_DATA_SEND)
+    else:
+        print(f"Failed to connect, return code {rc}")
 
 def on_message(client, userdata, msg):
-    """Callback for receiving messages."""
-    global Diffie_Hellman, Verified, Connected
+    global A, Diffie_Hellman, sender_skey, Verified
 
     if msg.topic == MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY:
         A = int(msg.payload.decode())
-        print("[Receiver] Received A:", A)
+        print("Received A:", A)
+        B = pow(generator, private_key_receiver, prime)
         Diffie_Hellman = pow(A, private_key_receiver, prime)
-        client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B))
-        client.publish(MQTT_TOPIC_CHALLENGE_REQUEST, "CHALLENGE_ME")
-        Connected = True
-
-    elif msg.topic == MQTT_TOPIC_CHALLENGE_RESPONSE:
-        encrypted_data = json.loads(msg.payload.decode())
-        c, cc = base64.b64decode(encrypted_data["c"]), encrypted_data["cc"]
-        receiver_skey = Kyber512._cpapke_dec(c, cc, Diffie_Hellman.to_bytes(16, "big"))
-        print("[Receiver] Decrypted challenge response:", receiver_skey.decode().strip())
-
-        # Encrypt receiver secret key and send it
-        cipher = AES.new(Diffie_Hellman.to_bytes(16, "big"), AES.MODE_CBC)
-        iv = cipher.iv
-        encrypted_receiver_skey = iv + cipher.encrypt(pad(receiver_skey, AES.block_size))
-        client.publish(MQTT_TOPIC_KYBER_RECEIVER_SECRET_KEY, encrypted_receiver_skey.hex(), qos=2)
+        print("Calculated Diffie-Hellman Key:", Diffie_Hellman)
+        client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECIVER_KEY, str(B))
+        
+    elif msg.topic == MQTT_TOPIC_KYBER_SENDER_SECRET_KEY:
+        ciphertext = bytes.fromhex(msg.payload.decode())
+        iv = ciphertext[:AES.block_size]
+        cipher = AES.new(Diffie_Hellman.to_bytes(16, "big"), AES.MODE_CBC, iv)
+        sender_skey = unpad(cipher.decrypt(ciphertext[AES.block_size:]), AES.block_size)
+        print("Received and Decrypted Sender Secret Key")
+    
+    elif msg.topic == MQTT_TOPIC_CHALLENGE_CHALLENGE:
+        challenge_data = json.loads(msg.payload.decode())
+        print("Received Challenge Data")
+        client.publish(MQTT_TOPIC_CHALLENGE_RESPONCE, "questionable")
         Verified = True
-
+    
     elif msg.topic == MQTT_TOPIC_DATA_SEND:
-        encrypted_data = json.loads(msg.payload.decode())
-        c, cc = base64.b64decode(encrypted_data["c"]), encrypted_data["cc"]
-        decrypted_message = Kyber512._cpapke_dec(c, cc, receiver_skey)
-        print("[Receiver] Decrypted Sensor Data:", decrypted_message.decode().strip())
+        data = json.loads(msg.payload.decode())
+        c = bytes.fromhex(data["c"])
+        cc = data["cc"]
+        message = Kyber512._cpapke_dec(sender_skey, c, cc)
+        print("Decrypted Sensor Data:", message.decode().strip())
 
-
-client = mqtt.Client()
+# Initialize MQTT Client
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client.on_connect = on_connect
 client.on_message = on_message
+
 client.connect(MQTT_BROKER, 1883, 60)
 client.loop_start()
 
-client.subscribe(MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY)
-client.subscribe(MQTT_TOPIC_CHALLENGE_RESPONSE)
-client.subscribe(MQTT_TOPIC_KYBER_SENDER_SECRET_KEY)
-client.subscribe(MQTT_TOPIC_DATA_SEND)
-
-while not Verified:
+while not Connected:
+    print("Waiting for connection...")
     time.sleep(1)
 
-print("[Receiver] Fully authenticated and receiving data.")
+while not Verified:
+    print("Waiting for verification...")
+    time.sleep(1)
 
-client.loop_forever()
+print("Secure Communication Established")
 
+while Verified:
+    time.sleep(5)
 
-
-@app.route("/connect", methods=["POST"])
-def send_data():
-    global Connected
-    while not Connected:
-        client.subscribe(MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY)
-
-
-
-
-        return jsonify({"error": "Verification not complete"}), 400
-    
-    temperature = request.json.get("temperature", "20")
-    message = temperature.ljust(32).encode()
-    c, cc = Kyber512._cpapke_enc(sender_pkey, message, os.urandom(32))
-    data_json = json.dumps({"c": base64.b64encode(c).decode(), "cc": cc})
-    publish_message(MQTT_TOPICS["data_send"], data_json)
-    return jsonify({"status": "Data sent"})
-
-@app.route("/status", methods=["GET"])
-def get_status():
-    return jsonify({"Connected": Connected, "Verified": Verified})
-
-if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+client.loop_stop()
+client.disconnect()
