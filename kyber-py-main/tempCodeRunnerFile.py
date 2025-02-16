@@ -1,0 +1,1 @@
+input_bytes = self._prf(sigma,  bytes([N]), 64*eta)

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Live Data</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #2A9D8F, #264653);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 3em;
+            color: #E9C46A;
+            letter-spacing: 2px;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        #temperature {
+            font-size: 3em;
+            font-weight: 700;
+            color: #F4A261;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin-bottom: 30px;
+            transition: transform 0.3s ease-in-out;
+        }
+
+        #temperature:hover {
+            transform: scale(1.1);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        #messages {
+            width: 100%;
+            max-width: 500px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            overflow-y: auto;
+            height: 300px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        p {
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        p:nth-child(even) {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .message {
+            font-size: 1.2em;
+            color: #E9C46A;
+            letter-spacing: 1px;
+        }
+
+        .temperature-update {
+            color: #F4A261;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        /* Hover effect for messages */
+        #messages p:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(5px);
+            transition: transform 0.2s ease-in-out;
+        }
+
+        /* Adding smooth page transition */
+        body {
+            animation: fadeIn 1.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Live MQTT Data</h1>
+        <div id="temperature">Temperature: -- °C</div>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        var socket = io.connect("http://" + document.domain + ":" + location.port);
+
+        // Listen for MQTT messages
+        socket.on("mqtt_message", function(data) {
+            let msgDiv = document.getElementById("messages");
+            let newMsg = document.createElement("p");
+            newMsg.textContent = "Received: " + data.message;
+            newMsg.classList.add("message");
+            msgDiv.appendChild(newMsg);
+
+            // Assuming the message contains temperature data in JSON format: { "temperature": 25 }
+            if (data.message && data.message.temperature !== undefined) {
+                let temperatureDiv = document.getElementById("temperature");
+                temperatureDiv.textContent = "Temperature: " + data.message.temperature + " °C";
+
+                // Add a temperature update animation
+                let updateMsg = document.createElement("p");
+                updateMsg.textContent = "New Temperature: " + data.message.temperature + " °C";
+                updateMsg.classList.add("temperature-update");
+                msgDiv.appendChild(updateMsg);
+            }
+        });
+    </script>
+</body>
+</html>
