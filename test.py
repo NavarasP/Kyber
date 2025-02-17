@@ -94,5 +94,3 @@ while Verified:
     client.publish(MQTT_TOPIC_DATA_SEND, data_json)
     time.sleep(5)
 
-client.loop_stop()
-client.disconnect()

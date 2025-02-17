@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Temperature Monitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+</head>
+<body>
+    <h1>Temperature for <span id="device-name"></span></h1>
+    <p>Current Temperature: <span id="temperature-value">Loading...</span>°C</p>
+
+    <script>
+        document.getElementById('device-name').textContent = new URLSearchParams(window.location.search).get('device');
+
+        var socket = io();
+
+        // Update temperature when received from MQTT
+        socket.on('temperature_update', function(data) {
+            if (data.device === document.getElementById('device-name').textContent) {
+                document.getElementById('temperature-value').textContent = data.temperature;
+            }
+        });
+    </script>
+</body>
+</html>
