@@ -47,7 +47,7 @@ def save_temperature(temp):
         file.write(temp)
 
 def on_message(client, userdata, msg):
-    global Connected, devices, Diffie_Hellman, Verified, sender_skey
+    global Connected, devices, Diffie_Hellman, Verified, sender_skey, satis
 
     with lock:
         print(f"Received message: {msg.topic} - {msg.payload.decode()}")
