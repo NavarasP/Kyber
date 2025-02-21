@@ -1,8 +1,6 @@
-from flask import Flask, render_template, request, jsonify
-from flask_socketio import SocketIO
+
 import json
 import paho.mqtt.client as mqtt
-import eventlet
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from kyber import Kyber512
@@ -12,12 +10,6 @@ import threading
 TEMP_FILE = "temperature.txt"
 
 
-eventlet.monkey_patch()  # Ensures compatibility with eventlet
-
-app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
-
-# MQTT Configuration
 MQTT_BROKER = "localhost"
 
 MQTT_TOPIC_AVAILABLE = "status/Available/Device1"
@@ -38,6 +30,7 @@ devices = []
 Connected = False
 Verified = False
 Requested = False
+satis=False
 Diffie_Hellman = None
 sender_skey = None
 
@@ -68,7 +61,9 @@ def on_message(client, userdata, msg):
             A = int(msg.payload.decode())
             Diffie_Hellman = pow(A, private_key_receiver, prime)
             print(f"Received A: {A}, Computed Shared Key: {Diffie_Hellman}")
-            client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
+            while not satis:
+                client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
+
 
         elif msg.topic == MQTT_TOPIC_CHALLENGE_CHALLENGE:
             data = json.loads(msg.payload.decode())
@@ -94,6 +89,8 @@ def on_message(client, userdata, msg):
             elif payload == "Device Connected":
                 Connected = True
                 print("Device connected successfully.")
+            elif payload == "B Received":
+                satis = True
 
         elif msg.topic == MQTT_TOPIC_DATA_SEND:
             data = json.loads(msg.payload.decode())
@@ -111,7 +108,6 @@ client.connect(MQTT_BROKER, 1883, 60)
 
 client.loop_start()
 
-# Ensure the receiver stays running
 while not Connected:
     print("Waiting for connection...")
     client.subscribe(MQTT_TOPIC_AVAILABLE)
@@ -129,7 +125,6 @@ while not Verified:
 
     time.sleep(1)
 
-# Keep listening for data
 client.subscribe(MQTT_TOPIC_DATA_SEND)
 
 print("Receiver started and listening for data...")
