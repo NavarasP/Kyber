@@ -61,8 +61,7 @@ def on_message(client, userdata, msg):
             A = int(msg.payload.decode())
             Diffie_Hellman = pow(A, private_key_receiver, prime)
             print(f"Received A: {A}, Computed Shared Key: {Diffie_Hellman}")
-            while not satis:
-                client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
+            client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
 
 
         elif msg.topic == MQTT_TOPIC_CHALLENGE_CHALLENGE:
