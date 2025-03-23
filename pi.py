@@ -26,6 +26,9 @@ MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY = "diffie_hellman/receiverkey"
 MQTT_TOPIC_DATA_SEND = "data/send"
 MQTT_TOPIC_ACKNOWLEDGMENT = "message/Acknowledged"
 
+
+
+
 # Diffie-Hellman setup
 private_key_sender = 6
 prime = 23
