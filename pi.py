@@ -104,8 +104,7 @@ while not Connected:
 
 # Perform key exchange
 client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_SENDER_KEY, str(A))
-while Diffie_Hellman == None:
-    client.subscribe(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY)
+client.subscribe(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY)
 
 # Wait for verification
 while not Verified:
