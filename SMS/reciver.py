@@ -7,7 +7,7 @@ from kyber import Kyber512
 import os
 import time
 import threading
-TEMP_FILE = "temperature.txt"
+TEMP_FILE = "reciver.txt"
 
 
 MQTT_BROKER = "localhost"
@@ -41,7 +41,7 @@ prime = 23
 generator = 5
 B = pow(generator, private_key_receiver, prime)
 
-def save_temperature(temp):
+def save_text(temp):
     """Save temperature data to a text file."""
     with open(TEMP_FILE, "w") as file:  
         file.write(temp)
@@ -61,8 +61,7 @@ def on_message(client, userdata, msg):
             A = int(msg.payload.decode())
             Diffie_Hellman = pow(A, private_key_receiver, prime)
             print(f"Received A: {A}, Computed Shared Key: {Diffie_Hellman}")
-            while not satis:
-                client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
+            client.publish(MQTT_TOPIC_DIFFIE_HELLMAN_RECEIVER_KEY, str(B), qos=1)
 
 
         elif msg.topic == MQTT_TOPIC_CHALLENGE_CHALLENGE:
@@ -97,9 +96,9 @@ def on_message(client, userdata, msg):
             c = bytes.fromhex(data["c"])
             cc = data["cc"]
             message = Kyber512._cpapke_dec(sender_skey, c, cc)
-            save_temperature(str(message.decode().strip()))
+            save_text(str(message.decode().strip()))
 
-            print(f"Received Sensor Data: {message.decode().strip()} °C")
+            print(f"Received Sensor Data: {message.decode().strip()}")
 
 print("Initializing MQTT Client...")
 client = mqtt.Client()

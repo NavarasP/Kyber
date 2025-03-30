@@ -7,7 +7,7 @@
     <style>
         body {
             font-family: 'Arial', sans-serif;
-            background: linear-gradient(to right, #E76F51, #F4A261, #E9C46A, #2A9D8F, #264653);
+            background: linear-gradient(135deg, #6a11cb, #2575fc);
             text-align: center;
             color: white;
             padding: 50px;
@@ -32,28 +32,17 @@
             border-radius: 10px;
             word-wrap: break-word;
         }
-        .refresh-btn {
-            margin-top: 20px;
-            padding: 10px 20px;
-            font-size: 18px;
-            font-weight: bold;
-            background-color: #2A9D8F;
-            border: none;
-            color: white;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .refresh-btn:hover {
-            background-color: #264653;
-        }
     </style>
+    <script>
+        setInterval(() => {
+            location.reload();
+        }, 500); // Refresh every 0.5 seconds
+    </script>
 </head>
 <body>
     <div class="container">
         <h1>📨 Live Message Data</h1>
         <div class="message">{{ message }}</div>
-        <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
     </div>
 </body>
 </html>

@@ -14,8 +14,8 @@ def get_latest_temperature():
 @app.route("/")
 def index():
     """Render the temperature display page."""
-    temperature = get_latest_temperature()
-    return render_template("reciver.html", temperature=temperature)
+    message = get_latest_temperature()
+    return render_template("reciver.html", message=message)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5001)
